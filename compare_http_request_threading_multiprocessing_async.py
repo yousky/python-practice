@@ -2,9 +2,9 @@ import logging
 import threading
 import multiprocessing
 import asyncio
-import ssl
-import OpenSSL
-from datetime import datetime, UTC
+import aiohttp
+import asyncio
+import requests
 import time
 
 logging.basicConfig(
@@ -16,7 +16,7 @@ urls = [
     "github.com",
     "www.daum.net",
     "v.daum.net",
-    "mail.daum.net",
+    "www.facebook.com",
     "www.google.com",
     "mail.google.com",
     "drive.google.com",
@@ -45,24 +45,32 @@ urls = [
     "assets.msn.com"
 ]
 
-def check_cert_expiry(url):
+def check_website_status(url):
     try:
-        cert = ssl.get_server_certificate((url, 443))
-        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
-        expiry_date = datetime.strptime(x509.get_notAfter().decode('ascii'), '%Y%m%d%H%M%SZ')
-        days_to_expiry = (expiry_date - datetime.now(UTC).replace(tzinfo=None)).days
-        logging.debug(f"\t{url} :\tSSL 인증서 만료까지 남은 기간: {days_to_expiry}일")
+        response = requests.get("https://" + url)
+        if response.status_code == 200:
+            logging.debug(f"\t{url} :\t웹사이트 상태: 정상")
+        else:
+            logging.debug(f"\t{url} :\t웹사이트 상태: 비정상 ({response.status_code})")
     except Exception as err:
-        logging.exception(f"\t{url} :\t인증서 체크 에러 ({err})")
-
-async def check_cert_expiry_async(url):
-    check_cert_expiry(url)
+        logging.exception(f"\t{url} :\웹사이트 체크 에러 ({err})")
+    
+async def check_website_status_async(url):
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://" + url) as response:
+                if response.status == 200:
+                    logging.debug(f"\t{url} :\t웹사이트 상태: 정상")
+                else:
+                    logging.debug(f"\t{url} :\t웹사이트 상태: 비정상 ({response.status})")
+    except Exception as err:
+        logging.exception(f"\t{url} :\웹사이트 체크 에러 ({err})")
 
 def do_something(self, url):
-    check_cert_expiry(url)
+    check_website_status(url)
 
 async def do_something_async(self, url):
-    await check_cert_expiry_async(url)
+    await check_website_status_async(url)
 
 def execute_by_threading():
     try:
@@ -190,13 +198,13 @@ if __name__ == "__main__":
 """
 반복 테스트 결과
       1(a->t->m)   2(a->t->m)   3(a->m->t)   4(t->a->m)   5(t->m->a)   6(m->a->t)   7(m->t->a)
-asy         5.29         3.68         3.73         3.89         3.66         3.67         3.86
-thr         0.60         0.64         0.62         0.59         0.61         0.69         0.59
-mul         2.14         2.07         1.96         2.02         1.95         2.06         1.86
+asy         1.66         1.32         1.31         1.44         1.27         1.48         1.19
+thr         5.66         5.82         5.78         6.18         5.85         5.76         5.84
+mul         8.87         8.69         8.98         8.90         8.64         8.72         8.88
 
 해석
-인증서 check의 경우는 별다른 async관련 함수가 없어서 
-threading을 통해서 동시에 여러개 실행 하는 것이 가장 빠르다
-async가 가장 느렸다. 어딘가 딜레이 되는 곳이 있는 듯.. 
+http request의 경우는 aiohttp를 통해서 async 진행이 가능하다.
+이에 따라 async가 가장 빠르다
+멀티스레딩이 가장 느렸음.
 
 """
