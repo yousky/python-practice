@@ -69,15 +69,17 @@ if __name__ == "__main__":
     main()
 
 """
+first synchronous for execution time :32.60
+last synchronous for execution time :31.20
 반복 테스트 결과
       1(a->t->m)   2(a->t->m)   3(a->m->t)   4(t->a->m)   5(t->m->a)   6(m->a->t)   7(m->t->a)
-asy         1.51         1.15         2.50         1.28         1.30         3.26         1.47
-thr         5.74         5.80         5.77         6.23         5.74         6.03         5.91
-mul         8.33         8.71         8.55         8.35         8.32         8.41         8.57
+asy         1.62         6.60         3.99         1.45         5.56         1.92         1.56
+thr         6.66         6.14         6.83         5.82         6.59         6.34         6.16
+mul         8.70        10.17         8.85        10.33         8.87         9.54         8.30
 
 해석
 http request의 경우는 aiohttp를 통해서 async 진행이 가능하다.
 이에 따라 async가 가장 빠르다
-멀티스레딩이 가장 느렸음.
+멀티스레딩이 가장 느렸음. synchronous와 비교하면 그래도 빠른 편.
 
 """
