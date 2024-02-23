@@ -1,11 +1,8 @@
 import logging
-import threading
-import multiprocessing
-import asyncio
 import ssl
 import OpenSSL
 from datetime import datetime, UTC
-import time
+import parallel
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)s:%(message)s',
@@ -16,7 +13,7 @@ urls = [
     "github.com",
     "www.daum.net",
     "v.daum.net",
-    "mail.daum.net",
+    "www.facebook.com",
     "www.google.com",
     "mail.google.com",
     "drive.google.com",
@@ -58,131 +55,8 @@ def check_cert_expiry(url):
 async def check_cert_expiry_async(url):
     check_cert_expiry(url)
 
-def do_something(self, url):
-    check_cert_expiry(url)
-
-async def do_something_async(self, url):
-    await check_cert_expiry_async(url)
-
-def execute_by_threading():
-    try:
-        work_threads = []
-        for url in urls:
-            work_thread = threading.Thread(target=do_something, args=(1, url,))
-            work_threads.append(work_thread)
-
-        for work_thread in work_threads:
-            work_thread.start()
-
-        for work_thread in work_threads:
-            work_thread.join()
-
-        logging.debug("execute_by_threading done!")
-
-    except Exception as err:
-        logging.exception(f"execute_by_threading 에러 ({err})")
-
-def execute_by_multiprocessing():
-    try:
-        processes = []
-        for url in urls:
-            p = multiprocessing.Process(target=do_something, args=(1, url,))
-            processes.append(p)
-
-        for p in processes:
-            p.start()
-
-        for p in processes:
-            p.join()
-
-        logging.debug("execute_by_multiprocessing done!")
-
-    except Exception as err:
-        logging.exception(f"execute_by_multiprocessing 에러 ({err})")
-
-async def execute_by_async():
-    try:
-        tasks = [do_something_async(1, url) for url in urls]
-        await asyncio.gather(*tasks)
-
-        logging.debug("execute_by_async done!");
-    
-    except Exception as err:
-        logging.exception(f"execute_by_async 에러 ({err})")
-        
-
 def main():
-    logging.info("--- Main Start ---")
-
-    header_list_for_async = []
-    elapsed_time_list_for_async = []
-    elapsed_time_list_for_threading = []
-    elapsed_time_list_for_multiprocessing = []
-
-    logging.info("test 1 - order : async -> threading -> multiprocessing")
-    header_list_for_async.append("1(a->t->m)")
-    elapsed_time_list_for_async.append(execute_by_async_with_log());
-    elapsed_time_list_for_threading.append(execute_by_threading_with_log());
-    elapsed_time_list_for_multiprocessing.append(execute_by_multiprocessing_with_log());
-
-    logging.info("test 2 - order : async -> threading -> multiprocessing")
-    header_list_for_async.append("2(a->t->m)")
-    elapsed_time_list_for_async.append(execute_by_async_with_log());
-    elapsed_time_list_for_threading.append(execute_by_threading_with_log());
-    elapsed_time_list_for_multiprocessing.append(execute_by_multiprocessing_with_log());
-
-    logging.info("test 3 - order : async -> multiprocessing -> threading")
-    header_list_for_async.append("3(a->m->t)")
-    elapsed_time_list_for_async.append(execute_by_async_with_log());
-    elapsed_time_list_for_multiprocessing.append(execute_by_multiprocessing_with_log());
-    elapsed_time_list_for_threading.append(execute_by_threading_with_log());
-
-    logging.info("test 4 - order : threading -> async -> multiprocessing")
-    header_list_for_async.append("4(t->a->m)")
-    elapsed_time_list_for_threading.append(execute_by_threading_with_log());
-    elapsed_time_list_for_async.append(execute_by_async_with_log());
-    elapsed_time_list_for_multiprocessing.append(execute_by_multiprocessing_with_log());
-
-    logging.info("test 5 - order : threading -> multiprocessing -> async")
-    header_list_for_async.append("5(t->m->a)")
-    elapsed_time_list_for_threading.append(execute_by_threading_with_log());
-    elapsed_time_list_for_multiprocessing.append(execute_by_multiprocessing_with_log());
-    elapsed_time_list_for_async.append(execute_by_async_with_log());
-
-    logging.info("test 6 - order : multiprocessing -> async -> threading")
-    header_list_for_async.append("6(m->a->t)")
-    elapsed_time_list_for_multiprocessing.append(execute_by_multiprocessing_with_log());
-    elapsed_time_list_for_async.append(execute_by_async_with_log());
-    elapsed_time_list_for_threading.append(execute_by_threading_with_log());
-
-    logging.info("test 7 - order : multiprocessing -> threading -> async")
-    header_list_for_async.append("7(m->t->a)")
-    elapsed_time_list_for_multiprocessing.append(execute_by_multiprocessing_with_log());
-    elapsed_time_list_for_threading.append(execute_by_threading_with_log());
-    elapsed_time_list_for_async.append(execute_by_async_with_log());
-    
-    logging.info("    " + " ".join([f"{header:s}".rjust(12) for header in header_list_for_async]))
-    logging.info("asy " + " ".join([f"{num:.2f}".rjust(12) for num in elapsed_time_list_for_async]))
-    logging.info("thr " + " ".join([f"{num:.2f}".rjust(12) for num in elapsed_time_list_for_threading]))
-    logging.info("mul " + " ".join([f"{num:.2f}".rjust(12) for num in elapsed_time_list_for_multiprocessing]))
-    
-    logging.info("--- Main End ---")
-
-def execute_by_threading_with_log():
-    start_time = time.time()
-    execute_by_threading()
-    return time.time() - start_time;
-
-def execute_by_async_with_log():
-    start_time = time.time()
-    asyncio.run(execute_by_async())
-    return time.time() - start_time;
-
-def execute_by_multiprocessing_with_log():
-    start_time = time.time()
-    execute_by_multiprocessing()
-    return time.time() - start_time;
-
+    parallel.ParallelCompareWithUrl(urls, check_cert_expiry, check_cert_expiry_async).compare()
 
 if __name__ == "__main__":
     main()
@@ -190,9 +64,9 @@ if __name__ == "__main__":
 """
 반복 테스트 결과
       1(a->t->m)   2(a->t->m)   3(a->m->t)   4(t->a->m)   5(t->m->a)   6(m->a->t)   7(m->t->a)
-asy         5.29         3.68         3.73         3.89         3.66         3.67         3.86
-thr         0.60         0.64         0.62         0.59         0.61         0.69         0.59
-mul         2.14         2.07         1.96         2.02         1.95         2.06         1.86
+asy         4.58         3.88         3.75         3.77         3.70         3.67         3.74
+thr         0.60         0.65         0.68         0.62         0.62         0.60         0.63
+mul         2.17         1.99         2.18         2.16         2.01         2.03         2.09
 
 해석
 인증서 check의 경우는 별다른 async관련 함수가 없어서 
